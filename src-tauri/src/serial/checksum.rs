@@ -122,6 +122,80 @@ pub fn bytes_to_hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" ")
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_crc16_modbus_basic() {
+        // Well-known test vector: CRC16 Modbus of "123456789" = 0x4B37
+        let data = b"123456789";
+        let crc = compute_checksum(data, ChecksumType::Crc16Modbus);
+        assert_eq!(crc, vec![0x37, 0x4B]); // Little-endian output
+    }
+
+    #[test]
+    fn test_crc16_modbus_modbus_frame() {
+        // CRC of [0x01, 0x03, 0x00, 0x00, 0x00, 0x0A]
+        let data = vec![0x01u8, 0x03, 0x00, 0x00, 0x00, 0x0A];
+        let crc = compute_checksum(&data, ChecksumType::Crc16Modbus);
+        assert_eq!(crc.len(), 2);
+        // Correct CRC16 Modbus: 0xCDC5 (little-endian: [0xC5, 0xCD])
+        assert_eq!(crc, vec![0xC5, 0xCD]);
+    }
+
+    #[test]
+    fn test_crc16_modbus_empty() {
+        let data: Vec<u8> = vec![];
+        let crc = compute_checksum(&data, ChecksumType::Crc16Modbus);
+        assert_eq!(crc, vec![0xFF, 0xFF]);
+    }
+
+    #[test]
+    fn test_hex_to_bytes_roundtrip() {
+        let hex = "01 03 00 00 00 0A";
+        let bytes = hex_to_bytes(hex).unwrap();
+        assert_eq!(bytes, vec![0x01, 0x03, 0x00, 0x00, 0x00, 0x0A]);
+        let back = bytes_to_hex(&bytes);
+        assert_eq!(back, "01 03 00 00 00 0A");
+    }
+
+    #[test]
+    fn test_hex_to_bytes_no_spaces() {
+        let hex = "01030000000A";
+        let bytes = hex_to_bytes(hex).unwrap();
+        assert_eq!(bytes, vec![0x01, 0x03, 0x00, 0x00, 0x00, 0x0A]);
+    }
+
+    #[test]
+    fn test_hex_to_bytes_invalid_length() {
+        let hex = "01030";
+        let result = hex_to_bytes(hex);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hex_to_bytes_invalid_chars() {
+        let hex = "GG HH";
+        let result = hex_to_bytes(hex);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_xor8() {
+        let data = vec![0x01u8, 0x02, 0x03, 0x04];
+        let result = compute_checksum(&data, ChecksumType::Xor8);
+        assert_eq!(result, vec![0x04]); // 0x01 ^ 0x02 ^ 0x03 ^ 0x04 = 0x04
+    }
+
+    #[test]
+    fn test_sum8() {
+        let data = vec![0x01u8, 0x02, 0x03, 0x04];
+        let result = compute_checksum(&data, ChecksumType::Sum8);
+        assert_eq!(result, vec![0x0A]);
+    }
+}
+
 pub fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, String> {
     let cleaned: String = hex.chars().filter(|c| !c.is_whitespace()).collect();
     if cleaned.len() % 2 != 0 {

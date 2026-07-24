@@ -13,6 +13,7 @@ import { useAIStore } from "./stores/aiStore";
 import { detectBoardProfile } from "./services/boardProfileService";
 import { ProtocolPanel } from "./components/ProtocolPanel";
 import { ScriptEditor } from "./components/ScriptEditor/ScriptEditor";
+import { McpStatus } from "./components/McpStatus";
 
 function App() {
   const [ports, setPorts] = useState<PortInfo[]>([]);
@@ -128,6 +129,7 @@ function App() {
             onRefresh={refreshPorts}
           />
           <div className="ml-auto flex items-center gap-2">
+            <McpStatus />
             <ModeToggle />
           </div>
         </div>

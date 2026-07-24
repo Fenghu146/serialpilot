@@ -438,3 +438,121 @@ impl ProtocolAnalyzer {
         anomalies
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_analyze_empty_data() {
+        let analyzer = ProtocolAnalyzer::new();
+        let result = analyzer.analyze(&[], None);
+        assert_eq!(result.protocol, "Empty");
+        assert!(!result.anomalies.is_empty());
+    }
+
+    #[test]
+    fn test_analyze_modbus_rtu() {
+        let analyzer = ProtocolAnalyzer::new();
+        // Correct CRC16 Modbus for [0x01, 0x03, 0x00, 0x00, 0x00, 0x0A] = [0xC5, 0xCD]
+        let raw = vec![0x01u8, 0x03, 0x00, 0x00, 0x00, 0x0A, 0xC5, 0xCD];
+        let result = analyzer.analyze(&raw, Some("modbus_rtu"));
+        assert_eq!(result.protocol, "Modbus RTU");
+        assert!(result.checksum_valid.unwrap_or(false));
+        assert!(result.decoded.is_some());
+    }
+
+    #[test]
+    fn test_analyze_modbus_tcp() {
+        let analyzer = ProtocolAnalyzer::new();
+        let raw = vec![0x00u8, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x03, 0x00, 0x00, 0x00, 0x0A];
+        let result = analyzer.analyze(&raw, Some("modbus_tcp"));
+        assert_eq!(result.protocol, "Modbus TCP");
+        assert_eq!(result.fields.len(), 5);
+    }
+
+    #[test]
+    fn test_analyze_at_command() {
+        let analyzer = ProtocolAnalyzer::new();
+        let raw = b"AT\r\n";
+        let result = analyzer.analyze(raw, Some("at_command"));
+        assert_eq!(result.protocol, "AT Command");
+    }
+
+    #[test]
+    fn test_analyze_at_response_ok() {
+        let analyzer = ProtocolAnalyzer::new();
+        let raw = b"AT+GMR\r\nOK\r\n";
+        let result = analyzer.analyze(raw, Some("at_command"));
+        assert_eq!(result.protocol, "AT Command");
+        assert!(result.anomalies.is_empty());
+    }
+
+    #[test]
+    fn test_analyze_at_response_error() {
+        let analyzer = ProtocolAnalyzer::new();
+        let raw = b"AT+BADCMD\r\nERROR\r\n";
+        let result = analyzer.analyze(raw, Some("at_command"));
+        assert_eq!(result.protocol, "AT Command");
+        assert!(!result.anomalies.is_empty());
+    }
+
+    #[test]
+    fn test_analyze_auto_detect_modbus_rtu() {
+        let analyzer = ProtocolAnalyzer::new();
+        // Correct CRC16 Modbus for [0x01, 0x03, 0x00, 0x00, 0x00, 0x0A] = [0xC5, 0xCD]
+        let raw = vec![0x01u8, 0x03, 0x00, 0x00, 0x00, 0x0A, 0xC5, 0xCD];
+        let result = analyzer.analyze(&raw, None);
+        assert_eq!(result.protocol, "Modbus RTU");
+    }
+
+    #[test]
+    fn test_analyze_raw_unknown() {
+        let analyzer = ProtocolAnalyzer::new();
+        let raw = vec![0xFFu8, 0xAA, 0x55];
+        let result = analyzer.analyze(&raw, Some("unknown_protocol"));
+        assert_eq!(result.protocol, "Raw/Unknown");
+    }
+
+    #[test]
+    fn test_detect_anomalies_timeout() {
+        let analyzer = ProtocolAnalyzer::new();
+        let raw = vec![0x01u8, 0x03];
+        let anomalies = analyzer.detect_anomalies(&raw, 100, 200);
+        assert_eq!(anomalies.len(), 1);
+        assert_eq!(anomalies[0].anomaly_type, "Timeout");
+    }
+
+    #[test]
+    fn test_detect_anomalies_empty_response() {
+        let analyzer = ProtocolAnalyzer::new();
+        let anomalies = analyzer.detect_anomalies(&[], 100, 50);
+        assert_eq!(anomalies.len(), 1);
+        assert_eq!(anomalies[0].anomaly_type, "Empty Response");
+    }
+
+    #[test]
+    fn test_detect_anomalies_command_error() {
+        let analyzer = ProtocolAnalyzer::new();
+        let raw = b"ERROR\r\n";
+        let anomalies = analyzer.detect_anomalies(raw, 100, 50);
+        assert_eq!(anomalies.len(), 1);
+        assert_eq!(anomalies[0].anomaly_type, "Command Error");
+    }
+
+    #[test]
+    fn test_detect_anomalies_multiple() {
+        let analyzer = ProtocolAnalyzer::new();
+        let raw = b"ERROR\r\n";
+        let anomalies = analyzer.detect_anomalies(raw, 100, 200);
+        assert_eq!(anomalies.len(), 2); // Timeout + Command Error
+    }
+
+    #[test]
+    fn test_detect_anomalies_none() {
+        let analyzer = ProtocolAnalyzer::new();
+        let raw = b"OK\r\n";
+        let anomalies = analyzer.detect_anomalies(raw, 100, 50);
+        assert!(anomalies.is_empty());
+    }
+}

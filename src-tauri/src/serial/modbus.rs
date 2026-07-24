@@ -153,3 +153,87 @@ pub fn decode_coil_values(data: &[u8], count: u16) -> Vec<bool> {
     }
     values
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_modbus_rtu_read_holding_registers() {
+        // Slave 1, FC 03 (Read Holding Registers), Addr 0x0000, Qty 0x000A
+        // Correct CRC16 Modbus for [0x01, 0x03, 0x00, 0x00, 0x00, 0x0A] = [0xC5, 0xCD]
+        let raw = vec![0x01u8, 0x03, 0x00, 0x00, 0x00, 0x0A, 0xC5, 0xCD];
+        let frame = parse_modbus_rtu(&raw).unwrap();
+        assert_eq!(frame.slave_id, 1);
+        assert_eq!(frame.function_code, 3);
+        assert_eq!(frame.function_name, "Read Holding Registers");
+        assert_eq!(frame.data, vec![0x00, 0x00, 0x00, 0x0A]);
+        assert_eq!(frame.crc_valid, Some(true));
+    }
+
+    #[test]
+    fn test_parse_modbus_rtu_invalid_crc() {
+        let raw = vec![0x01u8, 0x03, 0x00, 0x00, 0x00, 0x0A, 0xFF, 0xFF];
+        let frame = parse_modbus_rtu(&raw).unwrap();
+        assert_eq!(frame.crc_valid, Some(false));
+    }
+
+    #[test]
+    fn test_parse_modbus_rtu_too_short() {
+        let raw = vec![0x01u8, 0x03];
+        assert!(parse_modbus_rtu(&raw).is_none());
+    }
+
+    #[test]
+    fn test_parse_modbus_tcp_read_holding_registers() {
+        // Transaction ID 0x0001, Protocol ID 0x0000, Length 0x0006, Unit ID 0x01, FC 03
+        let raw = vec![0x00u8, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x03, 0x00, 0x00, 0x00, 0x0A];
+        let frame = parse_modbus_tcp(&raw).unwrap();
+        assert_eq!(frame.transaction_id, 1);
+        assert_eq!(frame.protocol_id, 0);
+        assert_eq!(frame.length, 6);
+        assert_eq!(frame.unit_id, 1);
+        assert_eq!(frame.function_code, 3);
+        assert_eq!(frame.function_name, "Read Holding Registers");
+    }
+
+    #[test]
+    fn test_parse_modbus_tcp_too_short() {
+        let raw = vec![0x00u8, 0x01, 0x00, 0x00, 0x00];
+        assert!(parse_modbus_tcp(&raw).is_none());
+    }
+
+    #[test]
+    fn test_decode_register_values() {
+        let data = vec![0x00u8, 0x0A, 0x01, 0x02];
+        let values = decode_register_values(&data);
+        assert_eq!(values, vec![0x000A, 0x0102]);
+    }
+
+    #[test]
+    fn test_decode_coil_values() {
+        let data = vec![0xA5u8]; // 10100101
+        let values = decode_coil_values(&data, 8);
+        assert_eq!(values, vec![true, false, true, false, false, true, false, true]);
+    }
+
+    #[test]
+    fn test_verify_modbus_crc_valid() {
+        // Correct CRC for [0x01, 0x03, 0x00, 0x00, 0x00, 0x0A] is [0xC5, 0xCD]
+        let frame = vec![0x01u8, 0x03, 0x00, 0x00, 0x00, 0x0A, 0xC5, 0xCD];
+        assert!(verify_modbus_crc(&frame));
+    }
+
+    #[test]
+    fn test_verify_modbus_crc_invalid() {
+        let frame = vec![0x01u8, 0x03, 0x00, 0x00, 0x00, 0x0A, 0xFF, 0xFF];
+        assert!(!verify_modbus_crc(&frame));
+    }
+
+    #[test]
+    fn test_compute_modbus_crc() {
+        let data = vec![0x01u8, 0x03, 0x00, 0x00, 0x00, 0x0A];
+        let crc = compute_modbus_crc(&data);
+        assert_eq!(crc, vec![0xC5, 0xCD]);
+    }
+}

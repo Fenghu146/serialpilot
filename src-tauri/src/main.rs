@@ -4,10 +4,12 @@ use serial::types::*;
 use serial::PortManager;
 use serial::analyzer::{FrameAnalysis, ProtocolAnalyzer};
 use serial::checksum::{self, ChecksumType};
+use serial::mcp::McpServer;
 use serial::script::{ScriptEngine, ScriptResult};
 use std::sync::Arc;
 use tauri::{Manager, State};
 use tokio::sync::Mutex;
+use serde_json::Value;
 
 pub struct AppState {
     port_manager: Arc<Mutex<PortManager>>,
@@ -75,6 +77,19 @@ fn parse_modbus(hex_data: String, is_tcp: bool) -> Result<FrameAnalysis, String>
 }
 
 #[tauri::command]
+fn get_mcp_info() -> Value {
+    serde_json::json!({
+        "port": 9777,
+        "protocol": "JSON-RPC 2.0",
+        "tools": [
+            "list_ports", "connect", "disconnect",
+            "send", "send_hex", "send_command", "read", "status",
+            "analyze_frame"
+        ]
+    })
+}
+
+#[tauri::command]
 async fn run_script(
     state: State<'_, AppState>,
     script: String,
@@ -103,6 +118,7 @@ fn main() {
             compute_checksum_cmd,
             parse_modbus,
             run_script,
+            get_mcp_info,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -114,6 +130,13 @@ fn main() {
                 let _ = window.set_title("SerialPilot - AI 协同串口调试工具");
                 let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: 1200, height: 800 }));
             }
+            let mcp_manager = manager_clone.clone();
+            tauri::async_runtime::spawn(async move {
+                let server = McpServer::new(mcp_manager, 9777);
+                if let Err(e) = server.start().await {
+                    log::error!("MCP Server 启动失败: {}", e);
+                }
+            });
             Ok(())
         })
         .run(tauri::generate_context!())
