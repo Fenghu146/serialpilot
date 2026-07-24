@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { LogEntry, PortConfig } from "../types";
 import { useAIStore } from "../stores/aiStore";
 import { LogPanel } from "./LogPanel";
-import { Trash2, Copy } from "lucide-react";
+import { Trash2, Copy, Highlighter } from "lucide-react";
+import { highlightData, highlightTimestamp } from "../utils/highlighter";
 
 interface TerminalProps {
   logs: LogEntry[];
@@ -20,6 +21,7 @@ export function Terminal({ logs, onClear, onTextSelected, onLoadLogs, portName, 
   const autoScrollRef = useRef(true);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const { mode } = useAIStore();
+  const [highlighting, setHighlighting] = useState(true);
 
   useEffect(() => {
     if (autoScrollRef.current && scrollRef.current) {
@@ -87,6 +89,17 @@ export function Terminal({ logs, onClear, onTextSelected, onLoadLogs, portName, 
           {mode === 'ai' && (
             <span className="badge badge-blue text-[10px]">AI 就绪</span>
           )}
+          <button
+            onClick={() => setHighlighting(!highlighting)}
+            className={`p-1 rounded transition-colors ${
+              highlighting
+                ? 'text-accent-yellow bg-accent-yellow/10'
+                : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
+            }`}
+            title={highlighting ? '关闭高亮' : '开启高亮'}
+          >
+            <Highlighter className="w-3 h-3" />
+          </button>
         </div>
         <div className="flex items-center gap-1">
           {onLoadLogs && portName && config && (
@@ -133,9 +146,17 @@ export function Terminal({ logs, onClear, onTextSelected, onLoadLogs, portName, 
                   log.direction === "TX" ? "text-tx" : "text-rx"
                 }`}
               >
-                <span className="text-text-muted mr-2 font-mono text-[11px]">[{log.timestamp}]</span>
+                <span className="mr-2 font-mono text-[11px]">
+                  [{highlighting ? highlightTimestamp(log.timestamp).map((seg, i) => (
+                    <span key={i} className={seg.className}>{seg.text}</span>
+                  )) : log.timestamp}]
+                </span>
                 <span className="font-bold mr-2 text-[11px]">{log.direction}&gt;</span>
-                <span className="break-all">{log.data}</span>
+                <span className="break-all">
+                  {highlighting ? highlightData(log.data).map((seg, i) => (
+                    <span key={i} className={seg.className}>{seg.text}</span>
+                  )) : log.data}
+                </span>
               </div>
             ))}
           </div>
