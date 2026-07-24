@@ -205,51 +205,68 @@ impl PortManager {
         std::thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(async {
-                let mut buf = [0u8; 1024];
-                loop {
-                    let result = {
-                        let mut inner = inner_arc.lock().await;
-                        if inner.port.is_none() {
-                            break;
-                        }
-                        inner.port.as_mut().unwrap().read(&mut buf)
-                    };
+                let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(100);
 
-                    match result {
-                        Ok(n) if n > 0 => {
-                            let data = buf[..n].to_vec();
-                            let text = String::from_utf8_lossy(&data).to_string();
-
-                            {
-                                let mut inner = inner_arc.lock().await;
-                                inner.bytes_received += n as u64;
+                // Spawn the blocking read loop in a dedicated task
+                let read_inner = inner_arc.clone();
+                let read_handle = tokio::task::spawn_blocking(move || {
+                    let mut buf = [0u8; 1024];
+                    loop {
+                        let result = {
+                            // Use blocking_lock since we're in a blocking context
+                            let mut inner = read_inner.blocking_lock();
+                            if inner.port.is_none() {
+                                break;
                             }
+                            inner.port.as_mut().unwrap().read(&mut buf)
+                        };
 
-                            let entry = LogEntry {
-                                timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
-                                direction: Direction::Rx,
-                                data: text,
-                                is_hex: false,
-                            };
-
-                            let app = app_handle.lock().await;
-                            if let Some(handle) = app.as_ref() {
-                                let _ = handle.emit("serial:data", entry);
+                        match result {
+                            Ok(n) if n > 0 => {
+                                let data = buf[..n].to_vec();
+                                if tx.blocking_send(data).is_err() {
+                                    break; // Receiver dropped
+                                }
                             }
-                            debug!("RX: {} bytes", n);
-                        }
-                        Ok(_) => {
-                            tokio::time::sleep(Duration::from_millis(10)).await;
-                        }
-                        Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {
-                            tokio::time::sleep(Duration::from_millis(10)).await;
-                        }
-                        Err(e) => {
-                            error!("读取串口错误: {}", e);
-                            break;
+                            Ok(_) => {
+                                std::thread::sleep(Duration::from_millis(10));
+                            }
+                            Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {
+                                std::thread::sleep(Duration::from_millis(10));
+                            }
+                            Err(e) => {
+                                error!("读取串口错误: {}", e);
+                                break;
+                            }
                         }
                     }
+                });
+
+                // Process received data in async context
+                while let Some(data) = rx.recv().await {
+                    let text = String::from_utf8_lossy(&data).to_string();
+                    let n = data.len();
+
+                    {
+                        let mut inner = inner_arc.lock().await;
+                        inner.bytes_received += n as u64;
+                    }
+
+                    let entry = LogEntry {
+                        timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+                        direction: Direction::Rx,
+                        data: text,
+                        is_hex: false,
+                    };
+
+                    let app = app_handle.lock().await;
+                    if let Some(handle) = app.as_ref() {
+                        let _ = handle.emit("serial:data", entry);
+                    }
+                    debug!("RX: {} bytes", n);
                 }
+
+                read_handle.await.ok();
             });
         });
     }
