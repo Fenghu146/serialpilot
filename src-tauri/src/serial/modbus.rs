@@ -138,6 +138,7 @@ pub fn decode_register_values(data: &[u8]) -> Vec<u16> {
     values
 }
 
+#[allow(dead_code)]
 pub fn decode_coil_values(data: &[u8], count: u16) -> Vec<bool> {
     let mut values = Vec::new();
     for (_byte_idx, &byte) in data.iter().enumerate() {

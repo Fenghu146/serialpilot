@@ -12,6 +12,7 @@ use crate::serial::checksum;
 const MCP_VERSION: &str = "2024-11-05";
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct JsonRpcRequest {
     jsonrpc: String,
     id: Option<Value>,

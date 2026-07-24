@@ -45,6 +45,7 @@ pub struct FieldValue {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AnomalyResult {
     pub timestamp: String,
     pub anomaly_type: String,
@@ -55,6 +56,7 @@ pub struct AnomalyResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[allow(dead_code)]
 pub enum AnomalySeverity {
     Info,
     Warning,
@@ -393,6 +395,7 @@ impl ProtocolAnalyzer {
         }
     }
 
+    #[allow(dead_code)]
     pub fn detect_anomalies(
         &self,
         raw: &[u8],

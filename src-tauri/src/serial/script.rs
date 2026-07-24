@@ -205,6 +205,7 @@ impl ScriptEngine {
     }
 }
 
+#[allow(dead_code)]
 pub const EXAMPLE_SCRIPT: &str = r#"{
   "name": "ESP32 AT 测试",
   "description": "测试 ESP32 基本 AT 指令",

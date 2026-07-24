@@ -10,6 +10,7 @@ pub enum ChecksumType {
     Sum16,
 }
 
+#[allow(dead_code)]
 pub fn verify_checksum(data: &[u8], expected: &[u8], algo: ChecksumType) -> bool {
     let computed = compute_checksum(data, algo);
     computed == expected

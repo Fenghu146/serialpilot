@@ -131,6 +131,7 @@ impl PortManager {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn is_connected(&self) -> bool {
         let inner = self.inner.lock().await;
         inner.port.is_some()
