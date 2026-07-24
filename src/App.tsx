@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { PortInfo, PortConfig, WriteMode, LogEntry, ConnectionStatus } from "./types";
@@ -6,6 +6,11 @@ import { PortPanel } from "./components/PortPanel";
 import { Terminal } from "./components/Terminal";
 import { SendPanel } from "./components/SendPanel";
 import { StatusBar } from "./components/StatusBar";
+import { ModeToggle } from "./components/ModeToggle";
+import { AICopilotPanel } from "./components/AICopilot/AICopilotPanel";
+import { AISettings } from "./components/AICopilot/AISettings";
+import { useAIStore } from "./stores/aiStore";
+import { detectBoardProfile } from "./services/boardProfileService";
 
 function App() {
   const [ports, setPorts] = useState<PortInfo[]>([]);
@@ -20,7 +25,8 @@ function App() {
   const [connected, setConnected] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [bytesStats, setBytesStats] = useState({ sent: 0, received: 0 });
-  const unlistenRef = useRef<(() => void) | null>(null);
+
+  const { mode, settingsOpen, setSelectedText, setBoardProfile } = useAIStore();
 
   const refreshPorts = useCallback(async () => {
     try {
@@ -44,16 +50,13 @@ function App() {
         unlisten = await listen<LogEntry>("serial:data", (event) => {
           setLogs((prev) => [...prev.slice(-2000), event.payload]);
         });
-        unlistenRef.current = unlisten;
       } catch (e) {
         console.error("Failed to listen:", e);
       }
     };
     setupListener();
     return () => {
-      if (unlisten) {
-        unlisten();
-      }
+      if (unlisten) unlisten();
     };
   }, []);
 
@@ -62,6 +65,19 @@ function App() {
     try {
       await invoke("open_port", { portName: selectedPort, config });
       setConnected(true);
+
+      const port = ports.find((p) => p.port_name === selectedPort);
+      if (port) {
+        const profile = detectBoardProfile({
+          manufacturer: port.manufacturer,
+          product: port.product,
+          vid: port.vid,
+          pid: port.pid,
+        });
+        if (profile) {
+          setBoardProfile(profile);
+        }
+      }
     } catch (e) {
       alert(`连接失败: ${e}`);
     }
@@ -88,22 +104,35 @@ function App() {
     setLogs([]);
   };
 
+  const handleTextSelected = (text: string) => {
+    setSelectedText(text);
+  };
+
   return (
-    <div className="h-full flex flex-col bg-bg-primary">
-      <PortPanel
-        ports={ports}
-        selectedPort={selectedPort}
-        config={config}
-        connected={connected}
-        onPortSelect={setSelectedPort}
-        onConfigChange={setConfig}
-        onConnect={handleConnect}
-        onDisconnect={handleDisconnect}
-        onRefresh={refreshPorts}
-      />
-      <Terminal logs={logs} onClear={handleClearLogs} />
-      <SendPanel onSend={handleSend} disabled={!connected} />
-      <StatusBar connected={connected} portName={selectedPort} config={config} stats={bytesStats} />
+    <div className={`h-full flex ${mode === 'ai' ? 'flex-row' : 'flex-col'}`}>
+      <div className={`flex-1 flex flex-col min-h-0 ${mode === 'ai' ? 'min-w-0' : ''}`}>
+        <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border-b border-bg-tertiary">
+          <PortPanel
+            ports={ports}
+            selectedPort={selectedPort}
+            config={config}
+            connected={connected}
+            onPortSelect={setSelectedPort}
+            onConfigChange={setConfig}
+            onConnect={handleConnect}
+            onDisconnect={handleDisconnect}
+            onRefresh={refreshPorts}
+          />
+          <div className="ml-auto flex items-center gap-2">
+            <ModeToggle />
+          </div>
+        </div>
+        <Terminal logs={logs} onClear={handleClearLogs} onTextSelected={handleTextSelected} />
+        <SendPanel onSend={handleSend} disabled={!connected} />
+        <StatusBar connected={connected} portName={selectedPort} config={config} stats={bytesStats} />
+      </div>
+      {mode === 'ai' && <AICopilotPanel />}
+      {settingsOpen && <AISettings />}
     </div>
   );
 }

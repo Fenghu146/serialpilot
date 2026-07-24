@@ -3,7 +3,7 @@ mod serial;
 use serial::types::*;
 use serial::PortManager;
 use std::sync::Arc;
-use tauri::State;
+use tauri::{Manager, State};
 use tokio::sync::Mutex;
 
 pub struct AppState {
@@ -71,6 +71,10 @@ fn main() {
             tauri::async_runtime::spawn(async move {
                 manager.lock().await.set_app_handle(handle).await;
             });
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_title("SerialPilot - AI 协同串口调试工具");
+                let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: 1200, height: 800 }));
+            }
             Ok(())
         })
         .run(tauri::generate_context!())
