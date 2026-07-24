@@ -1,5 +1,20 @@
 import { useState, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { X, Play, FileCode } from 'lucide-react';
+
+interface ScriptResult {
+  success: boolean;
+  output: string[];
+  test_results: Array<{ name: string; passed: boolean; message: string; duration_ms: number }>;
+  duration_ms: number;
+  error: string | null;
+}
+
+interface ScriptEditorProps {
+  onClose: () => void;
+  disabled: boolean;
+}
+
 const EXAMPLE_SCRIPT = `{
   "name": "ESP32 AT 测试",
   "description": "测试 ESP32 基本 AT 指令",
@@ -14,19 +29,6 @@ const EXAMPLE_SCRIPT = `{
     { "action": "print", "message": "测试完成" }
   ]
 }`;
-
-interface ScriptResult {
-  success: boolean;
-  output: string[];
-  test_results: Array<{ name: string; passed: boolean; message: string; duration_ms: number }>;
-  duration_ms: number;
-  error: string | null;
-}
-
-interface ScriptEditorProps {
-  onClose: () => void;
-  disabled: boolean;
-}
 
 export function ScriptEditor({ onClose, disabled }: ScriptEditorProps) {
   const [script, setScript] = useState(EXAMPLE_SCRIPT);
@@ -62,24 +64,29 @@ export function ScriptEditor({ onClose, disabled }: ScriptEditorProps) {
   const totalCount = result?.test_results.length || 0;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-bg-secondary rounded-lg border border-bg-tertiary w-[700px] max-h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-bg-tertiary">
-          <h2 className="text-sm font-semibold text-text-primary">📝 脚本自动化测试</h2>
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 animate-fade-in">
+      <div className="bg-bg-secondary rounded-lg border border-border w-[700px] max-h-[85vh] flex flex-col shadow-lg animate-slide-up">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <FileCode className="w-4 h-4 text-accent-blue" />
+            <h2 className="text-sm font-semibold text-text-primary">脚本自动化测试</h2>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleLoadExample}
-              className="text-text-secondary hover:text-text-primary text-xs px-2 py-1 rounded hover:bg-bg-tertiary"
+              className="text-text-secondary hover:text-text-primary text-xs px-2 py-1 rounded hover:bg-bg-hover transition-colors"
             >
               加载示例
             </button>
-            <button onClick={onClose} className="text-text-muted hover:text-text-primary">✕</button>
+            <button onClick={onClose} className="p-1 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary transition-colors">
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           <div>
-            <label className="block text-xs text-text-secondary mb-1">
+            <label className="block text-xs text-text-secondary mb-1.5">
               JSON 脚本 {disabled && <span className="text-accent-red">（请先连接串口）</span>}
             </label>
             <textarea
@@ -88,7 +95,7 @@ export function ScriptEditor({ onClose, disabled }: ScriptEditorProps) {
               onChange={(e) => setScript(e.target.value)}
               rows={12}
               disabled={disabled}
-              className="w-full bg-bg-primary text-text-primary text-xs rounded px-3 py-2 border-0 resize-none placeholder:text-text-muted disabled:opacity-50 font-mono"
+              className="input-field w-full py-2 text-xs font-mono resize-none disabled:opacity-50"
               spellCheck={false}
             />
           </div>
@@ -97,9 +104,10 @@ export function ScriptEditor({ onClose, disabled }: ScriptEditorProps) {
             <button
               onClick={handleRun}
               disabled={running || disabled || !script.trim()}
-              className="bg-accent-green hover:bg-green-600 text-white text-sm px-4 py-1.5 rounded disabled:opacity-50"
+              className="btn-primary flex items-center gap-1.5 text-xs"
             >
-              {running ? '⏳ 运行中...' : '▶ 运行脚本'}
+              <Play className="w-3 h-3" />
+              {running ? '运行中...' : '运行脚本'}
             </button>
             <span className="text-xs text-text-muted">
               支持: send, send_hex, wait, assert_response, assert_equal, print
@@ -107,7 +115,7 @@ export function ScriptEditor({ onClose, disabled }: ScriptEditorProps) {
           </div>
 
           {result && (
-            <div className="space-y-3">
+            <div className="space-y-3 animate-slide-up">
               <div className={`flex items-center gap-2 text-xs ${result.success ? 'text-accent-green' : 'text-accent-red'}`}>
                 <span>{result.success ? '✓' : '✗'}</span>
                 <span className="font-semibold">
@@ -117,13 +125,13 @@ export function ScriptEditor({ onClose, disabled }: ScriptEditorProps) {
               </div>
 
               {result.error && (
-                <div className="bg-accent-red/10 border border-accent-red/30 rounded px-3 py-2 text-xs text-accent-red">
+                <div className="bg-accent-red/10 border border-accent-red/30 rounded-md px-3 py-2 text-xs text-accent-red">
                   {result.error}
                 </div>
               )}
 
               {result.output.length > 0 && (
-                <div className="bg-bg-primary rounded p-3">
+                <div className="bg-bg-primary rounded-md p-3">
                   <div className="text-xs text-text-secondary mb-1">执行输出</div>
                   <div className="font-mono text-xs text-text-primary space-y-0.5 max-h-[150px] overflow-y-auto">
                     {result.output.map((line, i) => (
@@ -134,7 +142,7 @@ export function ScriptEditor({ onClose, disabled }: ScriptEditorProps) {
               )}
 
               {result.test_results.length > 0 && (
-                <div className="bg-bg-primary rounded p-3">
+                <div className="bg-bg-primary rounded-md p-3">
                   <div className="text-xs text-text-secondary mb-2">
                     测试结果: {passedCount}/{totalCount} 通过
                   </div>

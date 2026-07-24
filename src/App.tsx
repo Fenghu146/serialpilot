@@ -14,6 +14,7 @@ import { detectBoardProfile } from "./services/boardProfileService";
 import { ProtocolPanel } from "./components/ProtocolPanel";
 import { ScriptEditor } from "./components/ScriptEditor/ScriptEditor";
 import { McpStatus } from "./components/McpStatus";
+import { ThemeToggle } from "./components/ThemeToggle";
 
 function App() {
   const [ports, setPorts] = useState<PortInfo[]>([]);
@@ -130,6 +131,7 @@ function App() {
           />
           <div className="ml-auto flex items-center gap-2">
             <McpStatus />
+            <ThemeToggle />
             <ModeToggle />
           </div>
         </div>

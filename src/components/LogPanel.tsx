@@ -12,6 +12,7 @@ import {
   LogSession,
   ReplayState,
 } from '../services/logService';
+import { Download, FolderOpen, RotateCcw, Play, Pause, SkipBack, SkipForward, X } from 'lucide-react';
 
 interface LogPanelProps {
   logs: LogEntry[];
@@ -114,9 +115,6 @@ export function LogPanel({ logs, portName, config, onClearLogs, onLoadLogs, onOp
   useEffect(() => {
     if (!replay.isPlaying || replay.entries.length === 0) return;
 
-    const currentEntry = replay.entries[replay.currentIndex];
-    if (!currentEntry) return;
-
     const delay = Math.max(10, 100 / replay.speed);
 
     replayTimerRef.current = setTimeout(() => {
@@ -139,25 +137,26 @@ export function LogPanel({ logs, portName, config, onClearLogs, onLoadLogs, onOp
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
+        {/* Export */}
         <div className="relative">
           <button
             onClick={() => setShowExport(!showExport)}
             disabled={logs.length === 0}
-            className="text-text-secondary hover:text-text-primary text-xs px-2 py-0.5 rounded hover:bg-bg-tertiary disabled:opacity-50"
+            className="p-1.5 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary disabled:opacity-50 transition-colors"
             title="导出日志"
           >
-            📤 导出
+            <Download className="w-3.5 h-3.5" />
           </button>
           {showExport && (
-            <div className="absolute top-full left-0 mt-1 bg-bg-secondary border border-bg-tertiary rounded shadow-lg py-1 z-50 min-w-[120px]">
-              <button onClick={handleExportTxt} className="w-full text-left text-xs text-text-primary hover:bg-bg-tertiary px-3 py-1.5">
+            <div className="absolute top-full left-0 mt-1 bg-bg-secondary border border-border rounded-md shadow-lg py-1 z-50 min-w-[120px] animate-slide-down">
+              <button onClick={handleExportTxt} className="w-full text-left text-xs text-text-primary hover:bg-bg-hover px-3 py-1.5">
                 📄 TXT 格式
               </button>
-              <button onClick={handleExportCsv} className="w-full text-left text-xs text-text-primary hover:bg-bg-tertiary px-3 py-1.5">
+              <button onClick={handleExportCsv} className="w-full text-left text-xs text-text-primary hover:bg-bg-hover px-3 py-1.5">
                 📊 CSV 格式
               </button>
-              <button onClick={handleExportJson} className="w-full text-left text-xs text-text-primary hover:bg-bg-tertiary px-3 py-1.5">
+              <button onClick={handleExportJson} className="w-full text-left text-xs text-text-primary hover:bg-bg-hover px-3 py-1.5">
                 📋 JSON 格式
               </button>
             </div>
@@ -166,47 +165,40 @@ export function LogPanel({ logs, portName, config, onClearLogs, onLoadLogs, onOp
 
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="text-text-secondary hover:text-text-primary text-xs px-2 py-0.5 rounded hover:bg-bg-tertiary"
+          className="p-1.5 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary transition-colors"
           title="加载历史日志"
         >
-          📂 加载
+          <FolderOpen className="w-3.5 h-3.5" />
         </button>
 
         <button
           onClick={startReplay}
           disabled={logs.length === 0}
-          className="text-text-secondary hover:text-text-primary text-xs px-2 py-0.5 rounded hover:bg-bg-tertiary disabled:opacity-50"
+          className="p-1.5 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary disabled:opacity-50 transition-colors"
           title="复盘调试过程"
         >
-          🔄 复盘
+          <RotateCcw className="w-3.5 h-3.5" />
         </button>
 
         {onOpenProtocol && (
           <button
             onClick={onOpenProtocol}
-            className="text-text-secondary hover:text-text-primary text-xs px-2 py-0.5 rounded hover:bg-bg-tertiary"
+            className="p-1.5 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary transition-colors"
             title="协议分析"
           >
-            🔍 协议
+            🔍
           </button>
         )}
 
         {onOpenScript && (
           <button
             onClick={onOpenScript}
-            className="text-text-secondary hover:text-text-primary text-xs px-2 py-0.5 rounded hover:bg-bg-tertiary"
+            className="p-1.5 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary transition-colors"
             title="脚本自动化"
           >
-            📝 脚本
+            📝
           </button>
         )}
-
-        <button
-          onClick={onClearLogs}
-          className="text-text-secondary hover:text-accent-red text-xs px-2 py-0.5 rounded hover:bg-bg-tertiary"
-        >
-          🗑 清屏
-        </button>
 
         <input
           ref={fileInputRef}
@@ -217,16 +209,22 @@ export function LogPanel({ logs, portName, config, onClearLogs, onLoadLogs, onOp
         />
       </div>
 
+      {/* Replay Modal */}
       {showReplay && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-bg-secondary rounded-lg border border-bg-tertiary w-[700px] max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-bg-tertiary">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-bg-secondary rounded-lg border border-border w-[700px] max-h-[80vh] flex flex-col shadow-lg animate-slide-up">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border">
               <h2 className="text-sm font-semibold text-text-primary">🔄 日志复盘</h2>
-              <button onClick={() => { setShowReplay(false); setReplay((p) => ({ ...p, isPlaying: false })); }} className="text-text-muted hover:text-text-primary">✕</button>
+              <button
+                onClick={() => { setShowReplay(false); setReplay((p) => ({ ...p, isPlaying: false })); }}
+                className="p-1 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
             {metadata && (
-              <div className="px-5 py-2 border-b border-bg-tertiary flex gap-4 text-xs text-text-secondary">
+              <div className="px-5 py-2 border-b border-border flex gap-4 text-xs text-text-secondary">
                 <span>条目: {replay.entries.length}</span>
                 <span>↑ TX: {metadata.totalTxBytes}B</span>
                 <span>↓ RX: {metadata.totalRxBytes}B</span>
@@ -248,7 +246,7 @@ export function LogPanel({ logs, portName, config, onClearLogs, onLoadLogs, onOp
               )}
             </div>
 
-            <div className="px-5 py-3 border-t border-bg-tertiary space-y-2">
+            <div className="px-5 py-3 border-t border-border space-y-2">
               <div className="w-full bg-bg-primary rounded h-2 overflow-hidden">
                 <div
                   className="bg-accent-blue h-full transition-all"
@@ -256,20 +254,29 @@ export function LogPanel({ logs, portName, config, onClearLogs, onLoadLogs, onOp
                 />
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={() => seekReplay(0)} className="text-text-secondary hover:text-text-primary text-xs">⏮</button>
-                <button onClick={() => seekReplay(replay.currentIndex - 1)} className="text-text-secondary hover:text-text-primary text-xs">◀</button>
-                <button onClick={toggleReplayPlay} className="bg-accent-blue text-white text-xs px-3 py-1 rounded">
-                  {replay.isPlaying ? '⏸ 暂停' : '▶ 播放'}
+                <button onClick={() => seekReplay(0)} className="p-1 rounded hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors">
+                  <SkipBack className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => seekReplay(replay.currentIndex + 1)} className="text-text-secondary hover:text-text-primary text-xs">▶</button>
-                <button onClick={() => seekReplay(replay.entries.length - 1)} className="text-text-secondary hover:text-text-primary text-xs">⏭</button>
+                <button onClick={() => seekReplay(replay.currentIndex - 1)} className="p-1 rounded hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors">
+                  ◀
+                </button>
+                <button onClick={toggleReplayPlay} className="btn-primary text-xs px-3 py-1 flex items-center gap-1">
+                  {replay.isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                  {replay.isPlaying ? '暂停' : '播放'}
+                </button>
+                <button onClick={() => seekReplay(replay.currentIndex + 1)} className="p-1 rounded hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors">
+                  ▶
+                </button>
+                <button onClick={() => seekReplay(replay.entries.length - 1)} className="p-1 rounded hover:bg-bg-hover text-text-secondary hover:text-text-primary transition-colors">
+                  <SkipForward className="w-3.5 h-3.5" />
+                </button>
                 <span className="text-text-muted text-xs ml-2">
                   {replay.currentIndex + 1} / {replay.entries.length}
                 </span>
                 <select
                   value={replay.speed}
                   onChange={(e) => setReplaySpeed(Number(e.target.value))}
-                  className="bg-bg-primary text-text-primary text-xs rounded px-2 py-0.5 border-0 ml-auto"
+                  className="select-field py-0.5 w-[60px] text-xs ml-auto"
                 >
                   <option value={0.5}>0.5x</option>
                   <option value={1}>1x</option>
