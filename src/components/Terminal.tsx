@@ -10,9 +10,10 @@ interface TerminalProps {
   onLoadLogs?: (entries: LogEntry[]) => void;
   portName?: string;
   config?: PortConfig;
+  onOpenProtocol?: () => void;
 }
 
-export function Terminal({ logs, onClear, onTextSelected, onLoadLogs, portName, config }: TerminalProps) {
+export function Terminal({ logs, onClear, onTextSelected, onLoadLogs, portName, config, onOpenProtocol }: TerminalProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -83,6 +84,7 @@ export function Terminal({ logs, onClear, onTextSelected, onLoadLogs, portName, 
             config={config}
             onClearLogs={onClear}
             onLoadLogs={onLoadLogs}
+            onOpenProtocol={onOpenProtocol}
           />
         )}
         {!onLoadLogs && (

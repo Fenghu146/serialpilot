@@ -11,6 +11,7 @@ import { AICopilotPanel } from "./components/AICopilot/AICopilotPanel";
 import { AISettings } from "./components/AICopilot/AISettings";
 import { useAIStore } from "./stores/aiStore";
 import { detectBoardProfile } from "./services/boardProfileService";
+import { ProtocolPanel } from "./components/ProtocolPanel";
 
 function App() {
   const [ports, setPorts] = useState<PortInfo[]>([]);
@@ -27,6 +28,7 @@ function App() {
   const [bytesStats, setBytesStats] = useState({ sent: 0, received: 0 });
 
   const { mode, settingsOpen, setSelectedText, setBoardProfile } = useAIStore();
+  const [showProtocol, setShowProtocol] = useState(false);
 
   const refreshPorts = useCallback(async () => {
     try {
@@ -134,12 +136,14 @@ function App() {
           onLoadLogs={(entries) => setLogs(entries)}
           portName={selectedPort}
           config={config}
+          onOpenProtocol={() => setShowProtocol(true)}
         />
         <SendPanel onSend={handleSend} disabled={!connected} />
         <StatusBar connected={connected} portName={selectedPort} config={config} stats={bytesStats} />
       </div>
       {mode === 'ai' && <AICopilotPanel />}
       {settingsOpen && <AISettings />}
+      {showProtocol && <ProtocolPanel />}
     </div>
   );
 }

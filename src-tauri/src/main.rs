@@ -2,6 +2,8 @@ mod serial;
 
 use serial::types::*;
 use serial::PortManager;
+use serial::analyzer::{FrameAnalysis, ProtocolAnalyzer};
+use serial::checksum::{self, ChecksumType};
 use std::sync::Arc;
 use tauri::{Manager, State};
 use tokio::sync::Mutex;
@@ -49,6 +51,28 @@ async fn get_connection_status(
     Ok(manager.get_status().await)
 }
 
+#[tauri::command]
+fn analyze_frame(hex_data: String, protocol_hint: Option<String>) -> Result<FrameAnalysis, String> {
+    let bytes = checksum::hex_to_bytes(&hex_data)?;
+    let analyzer = ProtocolAnalyzer::new();
+    Ok(analyzer.analyze(bytes.as_slice(), protocol_hint.as_deref()))
+}
+
+#[tauri::command]
+fn compute_checksum_cmd(hex_data: String, algo: ChecksumType) -> Result<String, String> {
+    let bytes = checksum::hex_to_bytes(&hex_data)?;
+    let result = checksum::compute_checksum(&bytes, algo);
+    Ok(checksum::bytes_to_hex(&result))
+}
+
+#[tauri::command]
+fn parse_modbus(hex_data: String, is_tcp: bool) -> Result<FrameAnalysis, String> {
+    let bytes = checksum::hex_to_bytes(&hex_data)?;
+    let analyzer = ProtocolAnalyzer::new();
+    let hint = if is_tcp { "modbus_tcp" } else { "modbus_rtu" };
+    Ok(analyzer.analyze(bytes.as_slice(), Some(hint)))
+}
+
 fn main() {
     env_logger::init();
 
@@ -64,6 +88,9 @@ fn main() {
             close_port,
             write_port,
             get_connection_status,
+            analyze_frame,
+            compute_checksum_cmd,
+            parse_modbus,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

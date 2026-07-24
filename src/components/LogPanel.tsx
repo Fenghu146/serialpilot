@@ -19,9 +19,10 @@ interface LogPanelProps {
   config: { baud_rate: number; data_bits: string; stop_bits: string; parity: string; flow_control: string };
   onClearLogs: () => void;
   onLoadLogs: (entries: LogEntry[]) => void;
+  onOpenProtocol?: () => void;
 }
 
-export function LogPanel({ logs, portName, config, onClearLogs, onLoadLogs }: LogPanelProps) {
+export function LogPanel({ logs, portName, config, onClearLogs, onLoadLogs, onOpenProtocol }: LogPanelProps) {
   const [showExport, setShowExport] = useState(false);
   const [showReplay, setShowReplay] = useState(false);
   const [replayEntries, setReplayEntries] = useState<LogEntry[]>([]);
@@ -178,6 +179,16 @@ export function LogPanel({ logs, portName, config, onClearLogs, onLoadLogs }: Lo
         >
           🔄 复盘
         </button>
+
+        {onOpenProtocol && (
+          <button
+            onClick={onOpenProtocol}
+            className="text-text-secondary hover:text-text-primary text-xs px-2 py-0.5 rounded hover:bg-bg-tertiary"
+            title="协议分析"
+          >
+            🔍 协议
+          </button>
+        )}
 
         <button
           onClick={onClearLogs}
