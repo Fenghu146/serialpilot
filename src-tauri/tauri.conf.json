@@ -18,11 +18,14 @@
         "minWidth": 800,
         "minHeight": 600,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "center": true,
+        "decorations": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "dangerousDisableAssetCspModification": false
     }
   },
   "bundle": {
@@ -33,6 +36,18 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "SerialPilot Team",
+    "category": "DeveloperTool",
+    "shortDescription": "AI Collaborative Serial Debugging Tool",
+    "longDescription": "SerialPilot is an AI-powered serial port debugging tool for embedded developers. Features include intelligent AI copilot, protocol analysis, log replay, and script automation.",
+    "externalBin": [],
+    "resources": [],
+    "copyright": "MIT License",
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
   }
 }
