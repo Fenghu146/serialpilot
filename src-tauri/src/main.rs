@@ -4,6 +4,7 @@ use serial::types::*;
 use serial::PortManager;
 use serial::analyzer::{FrameAnalysis, ProtocolAnalyzer};
 use serial::checksum::{self, ChecksumType};
+use serial::script::{ScriptEngine, ScriptResult};
 use std::sync::Arc;
 use tauri::{Manager, State};
 use tokio::sync::Mutex;
@@ -73,6 +74,16 @@ fn parse_modbus(hex_data: String, is_tcp: bool) -> Result<FrameAnalysis, String>
     Ok(analyzer.analyze(bytes.as_slice(), Some(hint)))
 }
 
+#[tauri::command]
+async fn run_script(
+    state: State<'_, AppState>,
+    script: String,
+) -> Result<ScriptResult, String> {
+    let manager = state.port_manager.clone();
+    let engine = ScriptEngine::new(manager);
+    Ok(engine.execute(&script).await)
+}
+
 fn main() {
     env_logger::init();
 
@@ -91,6 +102,7 @@ fn main() {
             analyze_frame,
             compute_checksum_cmd,
             parse_modbus,
+            run_script,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

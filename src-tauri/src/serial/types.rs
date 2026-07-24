@@ -109,9 +109,10 @@ impl fmt::Display for FlowControl {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum WriteMode {
+    #[default]
     Text,
     Hex,
 }

@@ -20,9 +20,10 @@ interface LogPanelProps {
   onClearLogs: () => void;
   onLoadLogs: (entries: LogEntry[]) => void;
   onOpenProtocol?: () => void;
+  onOpenScript?: () => void;
 }
 
-export function LogPanel({ logs, portName, config, onClearLogs, onLoadLogs, onOpenProtocol }: LogPanelProps) {
+export function LogPanel({ logs, portName, config, onClearLogs, onLoadLogs, onOpenProtocol, onOpenScript }: LogPanelProps) {
   const [showExport, setShowExport] = useState(false);
   const [showReplay, setShowReplay] = useState(false);
   const [replayEntries, setReplayEntries] = useState<LogEntry[]>([]);
@@ -187,6 +188,16 @@ export function LogPanel({ logs, portName, config, onClearLogs, onLoadLogs, onOp
             title="协议分析"
           >
             🔍 协议
+          </button>
+        )}
+
+        {onOpenScript && (
+          <button
+            onClick={onOpenScript}
+            className="text-text-secondary hover:text-text-primary text-xs px-2 py-0.5 rounded hover:bg-bg-tertiary"
+            title="脚本自动化"
+          >
+            📝 脚本
           </button>
         )}
 
