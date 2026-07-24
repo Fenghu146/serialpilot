@@ -127,7 +127,14 @@ function App() {
             <ModeToggle />
           </div>
         </div>
-        <Terminal logs={logs} onClear={handleClearLogs} onTextSelected={handleTextSelected} />
+        <Terminal
+          logs={logs}
+          onClear={handleClearLogs}
+          onTextSelected={handleTextSelected}
+          onLoadLogs={(entries) => setLogs(entries)}
+          portName={selectedPort}
+          config={config}
+        />
         <SendPanel onSend={handleSend} disabled={!connected} />
         <StatusBar connected={connected} portName={selectedPort} config={config} stats={bytesStats} />
       </div>

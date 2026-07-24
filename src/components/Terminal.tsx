@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { LogEntry } from "../types";
+import { LogEntry, PortConfig } from "../types";
 import { useAIStore } from "../stores/aiStore";
+import { LogPanel } from "./LogPanel";
 
 interface TerminalProps {
   logs: LogEntry[];
   onClear: () => void;
   onTextSelected?: (text: string) => void;
+  onLoadLogs?: (entries: LogEntry[]) => void;
+  portName?: string;
+  config?: PortConfig;
 }
 
-export function Terminal({ logs, onClear, onTextSelected }: TerminalProps) {
+export function Terminal({ logs, onClear, onTextSelected, onLoadLogs, portName, config }: TerminalProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef(true);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -72,12 +76,23 @@ export function Terminal({ logs, onClear, onTextSelected }: TerminalProps) {
           终端 ({logs.length} 条记录)
           {mode === 'ai' && <span className="ml-2 text-accent-blue">· 选中日志可提交 AI</span>}
         </span>
-        <button
-          onClick={onClear}
-          className="text-text-secondary hover:text-accent-red text-xs px-2 py-0.5 rounded hover:bg-bg-tertiary"
-        >
-          清屏
-        </button>
+        {onLoadLogs && portName && config && (
+          <LogPanel
+            logs={logs}
+            portName={portName}
+            config={config}
+            onClearLogs={onClear}
+            onLoadLogs={onLoadLogs}
+          />
+        )}
+        {!onLoadLogs && (
+          <button
+            onClick={onClear}
+            className="text-text-secondary hover:text-accent-red text-xs px-2 py-0.5 rounded hover:bg-bg-tertiary"
+          >
+            清屏
+          </button>
+        )}
       </div>
       <div
         ref={scrollRef}
