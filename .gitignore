@@ -6,7 +6,7 @@ node_modules/
 dist/
 target/
 src-tauri/target/
-*.lock
+src-tauri/gen/
 
 # IDE
 .vscode/
@@ -31,18 +31,18 @@ yarn-error.log*
 .env.local
 .env.*.local
 
-# Tauri
-src-tauri/tauri.conf.json.bak
-src-tauri/gen/
-
 # Temp files
 *.tmp
 *.temp
-tauri-dev*.log
 screenshot*.png
+app-screenshot.png
+highlight*.png
 create-icons.ps1
-create-ico.ps1
-create-ico-v2.ps1
+create-ico*.ps1
 
 # Test coverage
 coverage/
+
+# Tauri
+src-tauri/tauri.conf.json.bak
+*.lock
