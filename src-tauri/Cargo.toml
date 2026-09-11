@@ -10,6 +10,11 @@ edition = "2021"
 [package.metadata.tauri]
 identifier = "com.serialpilot.app"
 
+# 以库形式复用核心逻辑，便于 main.rs 与集成测试共享代码
+[lib]
+name = "serialpilot_lib"
+path = "src/lib.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

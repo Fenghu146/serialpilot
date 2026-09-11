@@ -1,3 +1,8 @@
+//! 校验和算法与十六进制编解码工具。
+//!
+//! 提供 CRC8、CRC16-CCITT、CRC16-Modbus、XOR8/16、SUM8/16 七种算法，
+//! 以及 `hex_to_bytes` / `bytes_to_hex` 互转函数。
+
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ChecksumType {

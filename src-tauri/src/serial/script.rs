@@ -1,3 +1,8 @@
+//! JSON 自动化脚本引擎：按顺序执行发送/等待/断言/打印等步骤并生成测试报告。
+//!
+//! 断言类步骤（`assert_response` / `assert_equal`）会读取串口实际接收到的
+//! 数据，超时或内容不匹配时标记为失败，不再无条件通过。
+
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -169,16 +174,43 @@ impl ScriptEngine {
                 description,
             } => {
                 let test_start = std::time::Instant::now();
-                let _timeout = timeout_ms.unwrap_or(5000);
+                let timeout = timeout_ms.unwrap_or(5000);
                 output.push(format!(
                     "  → {}: 等待响应包含 '{}'",
                     description, contains
                 ));
-                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+                let connected = {
+                    let manager = self.port_manager.lock().await;
+                    manager.is_connected().await
+                };
+                if !connected {
+                    test_results.push(TestResult {
+                        name: description.clone(),
+                        passed: false,
+                        message: "串口未连接，无法校验响应".to_string(),
+                        duration_ms: test_start.elapsed().as_millis() as u64,
+                    });
+                    return Ok(());
+                }
+
+                // 克隆出内部句柄后再等待，避免长时间持有共享锁阻塞其它命令
+                let manager = self.port_manager.lock().await.clone();
+                let (response, matched) = manager
+                    .wait_for_response(Some(contains.as_str()), std::time::Duration::from_millis(timeout))
+                    .await;
+
                 test_results.push(TestResult {
                     name: description.clone(),
-                    passed: true,
-                    message: format!("响应匹配 '{}'", contains),
+                    passed: matched,
+                    message: if matched {
+                        format!("响应匹配 '{}'", contains)
+                    } else {
+                        format!(
+                            "等待 {}ms 未收到包含 '{}' 的响应，实际接收: {:?}",
+                            timeout, contains, response
+                        )
+                    },
                     duration_ms: test_start.elapsed().as_millis() as u64,
                 });
                 Ok(())
@@ -189,10 +221,23 @@ impl ScriptEngine {
             } => {
                 let test_start = std::time::Instant::now();
                 output.push(format!("  → {}: 断言等于 '{}'", description, expected));
+
+                let manager = self.port_manager.lock().await.clone();
+                let (response, passed) = manager
+                    .wait_until(std::time::Duration::from_millis(1000), |acc| {
+                        acc.trim() == expected.trim()
+                    })
+                    .await;
+                let actual = response.trim().to_string();
+
                 test_results.push(TestResult {
                     name: description.clone(),
-                    passed: true,
-                    message: format!("断言通过: {}", expected),
+                    passed,
+                    message: if passed {
+                        format!("断言通过: {}", expected)
+                    } else {
+                        format!("断言失败: 期望 '{}', 实际 '{}'", expected, actual)
+                    },
                     duration_ms: test_start.elapsed().as_millis() as u64,
                 });
                 Ok(())

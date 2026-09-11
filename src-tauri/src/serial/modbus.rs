@@ -1,3 +1,5 @@
+//! Modbus RTU/TCP 帧结构解析与 CRC 校验、寄存器/线圈值解码。
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

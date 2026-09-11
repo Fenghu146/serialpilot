@@ -1,3 +1,8 @@
+//! 前后端共享的数据结构：串口信息、通信参数、日志条目与连接状态等。
+//!
+//! 所有枚举的序列化命名需与前端 `src/types.ts` 保持一致：
+//! 参数类枚举使用 `PascalCase`，收发方向使用 `UPPERCASE`，写入模式使用 `Text`/`Hex`。
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -110,10 +115,11 @@ impl fmt::Display for FlowControl {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
 pub enum WriteMode {
     #[default]
+    #[serde(alias = "text")]
     Text,
+    #[serde(alias = "hex")]
     Hex,
 }
 

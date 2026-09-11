@@ -34,11 +34,17 @@ const CHECKSUM_OPTIONS = [
   { value: 'sum8', label: 'SUM8' },
 ];
 
-export function ProtocolPanel() {
+interface ProtocolPanelProps {
+  /** 关闭弹窗的回调。 */
+  onClose?: () => void;
+}
+
+export function ProtocolPanel({ onClose }: ProtocolPanelProps) {
   const [hexInput, setHexInput] = useState('');
   const [protocol, setProtocol] = useState('auto');
   const [analysis, setAnalysis] = useState<FrameAnalysis | null>(null);
   const [error, setError] = useState('');
+  const [checksumResult, setChecksumResult] = useState('');
 
   const handleAnalyze = async () => {
     if (!hexInput.trim()) return;
@@ -63,9 +69,10 @@ export function ProtocolPanel() {
         algo,
       });
       setError('');
-      return result;
+      setChecksumResult(`${algo.toUpperCase()} = ${result}`);
     } catch (e: any) {
       setError(e.toString());
+      setChecksumResult('');
     }
   };
 
@@ -74,7 +81,7 @@ export function ProtocolPanel() {
       <div className="bg-bg-secondary rounded-lg border border-border w-[600px] max-h-[80vh] flex flex-col shadow-lg animate-slide-up">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
           <h2 className="text-sm font-semibold text-text-primary">🔍 协议分析</h2>
-          <button onClick={() => { }} className="p-1 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary transition-colors">
+          <button onClick={onClose} className="p-1 rounded hover:bg-bg-hover text-text-muted hover:text-text-primary transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -183,6 +190,11 @@ export function ProtocolPanel() {
                   </button>
                 ))}
               </div>
+              {checksumResult && (
+                <div className="mt-2 bg-bg-primary rounded-md px-3 py-2 text-xs font-mono text-accent-blue break-all">
+                  {checksumResult}
+                </div>
+              )}
             </details>
           </div>
         </div>

@@ -52,7 +52,8 @@ export interface BoardProfile {
 }
 
 export interface AIContext {
-  portConfig: {
+  /** 当前串口参数（可选，未连接时为 undefined）。 */
+  portConfig?: {
     baud_rate: number;
     data_bits: string;
     stop_bits: string;

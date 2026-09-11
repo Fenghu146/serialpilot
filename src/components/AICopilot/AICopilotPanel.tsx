@@ -31,7 +31,7 @@ export function AICopilotPanel() {
 }
 
 function AIChat() {
-  const { messages, isStreaming, sendMessage } = useAIStore();
+  const { messages, isStreaming, sendMessage, boardProfile, selectedText, setSelectedText } = useAIStore();
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +43,13 @@ function AIChat() {
 
   const handleSend = () => {
     if (!input.trim() || isStreaming) return;
-    sendMessage(input.trim());
+    // 将自动识别的开发板与终端选中的日志一并作为上下文传给 AI
+    sendMessage(input.trim(), {
+      boardProfile,
+      selectedText,
+      recentLogs: [],
+    });
+    setSelectedText('');
     setInput('');
   };
 

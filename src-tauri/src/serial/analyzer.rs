@@ -1,3 +1,8 @@
+//! 协议分析引擎：自动识别并解析 Modbus RTU/TCP、AT 指令与原始数据帧。
+//!
+//! 入口为 [`ProtocolAnalyzer::analyze`]，返回统一的 [`FrameAnalysis`]，
+//! 其中包含字段列表、校验结果与异常提示，供前端与 MCP 工具消费。
+
 use serde::{Deserialize, Serialize};
 use crate::serial::checksum;
 use crate::serial::modbus;
@@ -161,7 +166,7 @@ impl ProtocolAnalyzer {
                             });
                         }
                     }
-                    if frame.function_code == 0x03 && frame.data.len() > 0 && frame.data.len() % 2 == 0 {
+                    if frame.function_code == 0x03 && !frame.data.is_empty() && frame.data.len() % 2 == 0 {
                         let registers = modbus::decode_register_values(&frame.data);
                         for (i, val) in registers.iter().enumerate() {
                             fields.push(FrameField {

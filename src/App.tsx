@@ -16,6 +16,9 @@ import { ScriptEditor } from "./components/ScriptEditor/ScriptEditor";
 import { McpStatus } from "./components/McpStatus";
 import { ThemeToggle } from "./components/ThemeToggle";
 
+/** 终端保留的最大日志条数，超出后丢弃最旧记录。 */
+const MAX_LOG_ENTRIES = 2000;
+
 function App() {
   const [ports, setPorts] = useState<PortInfo[]>([]);
   const [selectedPort, setSelectedPort] = useState<string>("");
@@ -49,15 +52,16 @@ function App() {
     return () => clearInterval(interval);
   }, [refreshPorts]);
 
+  // 订阅后端串口数据事件，并限制日志条数避免内存无限增长
   useEffect(() => {
     let unlisten: (() => void) | null = null;
     const setupListener = async () => {
       try {
         unlisten = await listen<LogEntry>("serial:data", (event) => {
-          setLogs((prev) => [...prev.slice(-2000), event.payload]);
+          setLogs((prev) => [...prev.slice(-(MAX_LOG_ENTRIES - 1)), event.payload]);
         });
       } catch (e) {
-        console.error("Failed to listen:", e);
+        console.error("注册串口数据监听失败:", e);
       }
     };
     setupListener();
@@ -65,6 +69,33 @@ function App() {
       if (unlisten) unlisten();
     };
   }, []);
+
+  // 连接期间轮询后端收发统计，驱动状态栏的 TX/RX 计数
+  useEffect(() => {
+    if (!connected) {
+      setBytesStats({ sent: 0, received: 0 });
+      return;
+    }
+
+    let active = true;
+    const syncStats = async () => {
+      try {
+        const status = await invoke<ConnectionStatus>("get_connection_status");
+        if (active) {
+          setBytesStats({ sent: status.bytes_sent, received: status.bytes_received });
+        }
+      } catch (e) {
+        console.error("获取连接状态失败:", e);
+      }
+    };
+
+    syncStats();
+    const timer = setInterval(syncStats, 1000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [connected]);
 
   const handleConnect = async () => {
     if (!selectedPort) return;
@@ -150,7 +181,7 @@ function App() {
       </div>
       {mode === 'ai' && <AICopilotPanel />}
       {settingsOpen && <AISettings />}
-      {showProtocol && <ProtocolPanel />}
+      {showProtocol && <ProtocolPanel onClose={() => setShowProtocol(false)} />}
       {showScript && <ScriptEditor onClose={() => setShowScript(false)} disabled={!connected} />}
     </div>
   );

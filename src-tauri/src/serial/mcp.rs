@@ -1,6 +1,12 @@
+//! MCP Server：通过 JSON-RPC 2.0 / TCP 暴露串口能力，供外部 AI Agent 调用。
+//!
+//! 监听 `127.0.0.1:9777`，实现 `initialize`、`tools/list`、`tools/call`、`ping`
+//! 等 MCP 方法，并对外提供 9 个工具（枚举/连接/收发/状态/协议分析）。
+
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
@@ -345,16 +351,32 @@ async fn handle_tool_call(params: Option<Value>, port_manager: &Arc<Mutex<PortMa
             let command = arguments.get("command").and_then(|v| v.as_str()).ok_or(JsonRpcError {
                 code: -32602, message: "Missing command".to_string()
             })?;
-            let timeout = arguments.get("timeout_ms").and_then(|v| v.as_u64()).unwrap_or(2000);
-            let manager = port_manager.lock().await;
-            manager.write_str(command, WriteMode::Text).await
-                .map_err(|e| JsonRpcError { code: -32603, message: e })?;
-            tokio::time::sleep(tokio::time::Duration::from_millis(timeout.min(100))).await;
-            Ok(json!({ "content": [{ "type": "text", "text": format!("命令已发送: {}", command) }] }))
+            let timeout = arguments.get("timeout_ms").and_then(|v| v.as_u64()).unwrap_or(2000).min(10_000);
+            {
+                let manager = port_manager.lock().await;
+                manager.write_str(command, WriteMode::Text).await
+                    .map_err(|e| JsonRpcError { code: -32603, message: e })?;
+            }
+            // 释放锁后再等待响应，避免阻塞 GUI 与其它命令
+            let manager = port_manager.lock().await.clone();
+            let (response, _) = manager.wait_for_response(None, Duration::from_millis(timeout)).await;
+            let body = if response.is_empty() {
+                "(超时，未收到响应)".to_string()
+            } else {
+                response
+            };
+            Ok(json!({ "content": [{ "type": "text", "text": format!("命令已发送: {}\n响应:\n{}", command, body) }] }))
         }
         "read" => {
-            let _timeout = arguments.get("timeout_ms").and_then(|v| v.as_u64()).unwrap_or(1000);
-            Ok(json!({ "content": [{ "type": "text", "text": "读取功能需要事件流支持" }] }))
+            let timeout = arguments.get("timeout_ms").and_then(|v| v.as_u64()).unwrap_or(1000).min(10_000);
+            let manager = port_manager.lock().await.clone();
+            let (response, _) = manager.wait_for_response(None, Duration::from_millis(timeout)).await;
+            let body = if response.is_empty() {
+                "(无数据)".to_string()
+            } else {
+                response
+            };
+            Ok(json!({ "content": [{ "type": "text", "text": body }] }))
         }
         "status" => {
             let manager = port_manager.lock().await;
